@@ -50,7 +50,7 @@ ANNOTATION_LABEL = {
     "Human": 28
 }
 
-# 이미지 크기 고정(네 데이터 기준)
+# 이미지 크기
 IMG_W = 4056
 IMG_H = 3040
 

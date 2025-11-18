@@ -2,19 +2,62 @@ import os
 import json
 import numpy as np
 from tqdm import tqdm
+
+###########################
+# 🔧 0) 사용자 설정 
+###########################
+# 바꿀 부분
+###################################################################################################################################
+# 이미지 가로 세로 크기
+IMG_W = 4030 // 4
+IMG_H = 3040 // 4
+# 클래스 개수
+CLASS_NUM = 5
+# iter 넘버
+# ITER_NUM = 2000
+###################################################################################################################################
+# 이미지 사이즈
+IMG_SIZE = f"{IMG_W}x{IMG_H}"  
+# json 만들 데이터셋 이름
+DATASET_NAME = f"dataset_DT_cls{CLASS_NUM}_{IMG_SIZE}"
+# train/val/test 라벨 경로
+BASE_DIR = f"/home/elicer/Workspace/split_data/{DATASET_NAME}"
+
 ###############################################
-# 0) class_name → class_id 고정 맵핑 (네가 준 거 그대로)
+# 1) class_name → class_id 고정 맵핑 
 ###############################################
 ANNOTATION_LABEL = {
-    "Undefined Stuff": 0, "Wall": 1, "Driving Area": 2, "Non Driving Area": 3,
-    "Parking Area": 4, "No Parking Area": 5, "Big Notice": 6, "Pillar": 7,
-    "Parking Area Number": 8, "Parking Line": 9, "Disabled Icon": 10,
-    "Women Icon": 11, "Compact Car Icon": 12, "Speed Bump": 13,
-    "Parking Block": 14, "Billboard": 15, "Toll Bar": 16, "Sign": 17,
-    "No Parking Sign": 18, "Traffic Cone": 19, "Fire Extinguisher": 20,
-    "Undefined Object": 21, "Two-wheeled Vehicle": 22, "Vehicle": 23,
-    "Wheelchair": 24, "Stroller": 25, "Shopping Cart": 26, "Animal": 27, "Human": 28
+    # "Undefined Stuff": 1, 
+    # "Wall": 2, 
+    "Driving Area": 1, 
+    # "Non Driving Area": 2,
+    "Parking Area": 2, 
+    # "No Parking Area": 3, 
+    # "Big Notice": 7, 
+    # "Pillar": 5, 
+    # "Parking Area Number": 9, 
+    "Parking Line": 3, 
+    # "Disabled Icon": 11,
+    # "Women Icon": 12, 
+    # "Compact Car Icon": 13, 
+    # "Speed Bump": 14,
+    # "Parking Block": 15,
+    # "Billboard": 16, 
+    # "Toll Bar": 17, 
+    # "Sign": 18,
+    # "No Parking Sign": 19, 
+    # "Traffic Cone": 20, 
+    # "Fire Extinguisher": 21,
+    # "Undefined Object": 22, 
+    # "Two-wheeled Vehicle": 23, 
+    "Vehicle": 4,
+    # "Wheelchair": 25, 
+    # "Stroller": 26, 
+    # "Shopping Cart": 27, 
+    # "Animal": 28, 
+    "Human": 5
 }
+
 
 # id -> name 으로 뒤집은 딕셔너리 (categories 생성용)
 ID_TO_NAME = {v: k for k, v in ANNOTATION_LABEL.items()}
@@ -63,8 +106,6 @@ def extract_polygon_dicts(seg):
 #    -> 여기서 category_id를 ANNOTATION_LABEL 기준으로 고정
 ###############################################
 def convert_to_coco(input_dir, output_file, directory):
-    IMG_W = 4032
-    IMG_H = 3040
 
     coco = {
         "info": [],
@@ -78,7 +119,7 @@ def convert_to_coco(input_dir, output_file, directory):
     # id 오름차순 정렬해서 넣기
     for cid in sorted(ID_TO_NAME.keys()):
         coco["categories"].append({
-            "id": cid+1,
+            "id": cid,
             "name": ID_TO_NAME[cid]
         })
 
@@ -106,7 +147,6 @@ def convert_to_coco(input_dir, output_file, directory):
             category_name = obj["class_name"]
 
             if category_name not in ANNOTATION_LABEL:
-                print(f"[WARN] Unknown class_name '{category_name}' in {filename}, skip")
                 continue
 
             category_id = ANNOTATION_LABEL[category_name]
@@ -130,7 +170,7 @@ def convert_to_coco(input_dir, output_file, directory):
                 ann = {
                     "id": annotation_id,
                     "image_id": image_info["id"],
-                    "category_id": category_id + 1,
+                    "category_id": category_id,
                     "segmentation": [new_seg],
                     "area": float(area),
                     "bbox": bbox,
@@ -148,10 +188,10 @@ def convert_to_coco(input_dir, output_file, directory):
 ###############################################
 # 4) train / val / test 변환 실행
 ###############################################
-for d in ('train', 'val', 'test'):
-    print(f"\n===== {d} start =====")
-    input_dir = f'new_data_set/{d}/labels'
-    output_file = f'new_data_set/{d}.json'
+for d in ("train", "val", "test"):
+    print(f"\n===== {d} 변환 시작 =====")
+    input_dir = f"{BASE_DIR}/{d}/labels"
+    output_file = f"{BASE_DIR}/{d}.json"
     convert_to_coco(input_dir, output_file, d)
 
 print("\n🎉 COCO 변환 완료!")

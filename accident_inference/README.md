@@ -1,16 +1,8 @@
-# accident_inference
+# 머신러닝 기반 사고 감지 시스템 
 
-A new Flutter project.
+스마트폰의 카메라와 센서 데이터를 활용하여 실시간으로 차량 충돌 등의 사고를 감지하고, 해당 정보를 백엔드 서버로 전송하는 크로스 플랫폼(Cross-platform) 모바일 애플리케이션입니다.
 
-## Getting Started
 
-This project is a starting point for a Flutter application.
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+# 센서 데이터 실시간 시각화 화면
+<img src="../img/senser.png" width="400" height="700"/>

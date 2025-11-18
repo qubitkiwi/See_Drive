@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FastAPI 이미지 업로드</title>
+</head>
+<body>
+
+    <h2>단일 이미지 업로드 save</h2>
+    <form action="/uploadfile/save" method="post" enctype="multipart/form-data">
+        <label for="file">업로드할 이미지 선택:</label><br>
+        <input type="file" id="file" name="file" accept="image/*" required><br><br>
+
+        <label for="metadata">사고 (JSON 데이터):</label>
+        <!-- <input type="textarea" id="description" name="description" value="{acc : {x: 1, y: 10, z:49}, acc_num: 2}"><br><br> -->
+        <textarea id="metadata_field" name="metadata" rows="8" cols="40">
+{
+    "accident_num": 2,
+    "acceleration" : {
+        "x": 1, 
+        "y": 10, 
+        "z":49
+    }
+}
+        </textarea>
+
+        <input type="submit" value="파일 업로드">
+    </form>
+
+</body>
+</html>

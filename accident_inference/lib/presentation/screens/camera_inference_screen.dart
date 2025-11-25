@@ -1101,7 +1101,7 @@ class _CameraInferenceScreenState extends State<CameraInferenceScreen> with Sing
       _yoloController.setThresholds(
         confidenceThreshold: 0.05, // 조금 더 현실적인 값
         iouThreshold: 0.4,         // 일반적인 기본값
-        numItemsThreshold: 1,
+        numItemsThreshold: 5,
       );
       
       debugPrint("✅ YOLO model loaded successfully: $_modelPath");

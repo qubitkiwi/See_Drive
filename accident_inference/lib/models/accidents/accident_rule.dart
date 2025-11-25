@@ -6,7 +6,7 @@ import '../hazard/hazard_detection.dart';
 import 'accident_type.dart';
 import 'accident_level.dart';
 import 'accident_decision.dart';
-import 'package:flutter/foundation.dart'; // ✅ debugPrint 사용하려면 필요
+import 'package:flutter/foundation.dart';
 
 class ImuSnapshot {
   final int tUs;
@@ -21,10 +21,11 @@ class ImuSnapshot {
     required this.lax, required this.lay, required this.laz,
   });
 
-  double get accMag => math.sqrt(ax*ax + ay*ay + az*az);
-  double get linAccMag => math.sqrt(lax*lax + lay*lay + laz*laz);
-  double get gyroMag => math.sqrt(gx*gx + gy*gy + gz*gz);
+  double get accMag => math.sqrt(ax * ax + ay * ay + az * az);
+  double get linAccMag => math.sqrt(lax * lax + lay * lay + laz * laz);
+  double get gyroMag => math.sqrt(gx * gx + gy * gy + gz * gz);
 
+  /// (참고용) az 기준 tilt. 이제 Engine에서는 baseline tilt를 씀
   double get tiltDeg {
     final g = accMag;
     if (g < 1e-6) return 0.0;
@@ -36,50 +37,70 @@ class ImuSnapshot {
 class AccidentRuleEngine {
   static ImuSnapshot? _prev;
 
-  // ✅ 증거 누적 카운터
+  // =========================
+  // ✅ 0도 기준 캘리브레이션
+  // =========================
+  static List<double>? _g0;
+
+  static void resetBaseline() {
+    _g0 = null;
+  }
+
+  static List<double> _normalize(List<double> v) {
+    final mag = math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+    if (mag < 1e-6) return [0, 0, 1];
+    return [v[0]/mag, v[1]/mag, v[2]/mag];
+  }
+
+  static double _tiltFromBaseline(ImuSnapshot imu) {
+    if (_g0 == null) return 0.0;
+    final g = _normalize([imu.ax, imu.ay, imu.az]);
+    final dot = (g[0]*_g0![0] + g[1]*_g0![1] + g[2]*_g0![2])
+        .clamp(-1.0, 1.0);
+    return math.acos(dot) * 180.0 / math.pi;
+  }
+
+  // =========================
+  // ✅ evidence streak / cooldown
+  // =========================
   static int _minorStreak = 0;
   static int _moderateStreak = 0;
   static int _severeStreak = 0;
 
-  // ✅ 연속 N프레임 이상일 때만 확정
-  static const int needMinorFrames = 3;
+  static const int needMinorFrames = 2;
   static const int needModerateFrames = 2;
-  static const int needSevereFrames = 1; // severe는 1번만 튀어도 OK
+  static const int needSevereFrames = 1;
 
-  // ✅ 팝업 쿨다운(연속 알림 방지)
   static int _lastDecisionUs = 0;
-  static const int cooldownUs = 3000000; // 3초
+  static const int cooldownUs = 5000000;
 
-  // 임계값: 조금 둔감하게 상향
-  static const double a1 = 2.5;
+  // =========================
+  // ✅ thresholds
+  // =========================
+  static const double a1 = 2.0;
   static const double a2 = 6.0;
   static const double a3 = 10.0;
 
-  static const double g1 = 0.8;
-  static const double g2 = 1.5;
-  static const double g3 = 2.2;
+  static const double g1 = 2.0;
+  static const double g2 = 6.0;
+  static const double g3 = 10.0;
 
-  // static const double a1 = 0.5;
-  // static const double a2 = 1.2;
-  // static const double a3 = 2.0;
-
-  // static const double g1 = 0.2;
-  // static const double g2 = 0.5;
-  // static const double g3 = 0.9;
-
-
-  static const double tiltSevereDeg = 80.0;
+  static const double tiltSevereDeg = 70.0;
   static const int hazardWindowUs = 800000;
 
   static AccidentDecision? decide({
     required List<HazardDetection> hazards,
     required ImuSnapshot imu,
   }) {
-    print("🟡 decide called t=${imu.tUs}");
+    debugPrint("🟡 decide called t=${imu.tUs}");
+
+    _g0 ??= _normalize([imu.ax, imu.ay, imu.az]);
+    final tilt = _tiltFromBaseline(imu);
+
     // --- cooldown ---
     if (_lastDecisionUs != 0 &&
         (imu.tUs - _lastDecisionUs).abs() < cooldownUs) {
-      print("⏸️ cooldown skip");
+      debugPrint("⏸️ cooldown skip");
       _prev = imu;
       return null;
     }
@@ -87,9 +108,9 @@ class AccidentRuleEngine {
     final prev = _prev;
     _prev = imu;
     if (prev == null) {
-      print("🟠 prev null (first frame)");
+      debugPrint("🟠 prev null (first frame)");
       return null;
-  }
+    }
 
     // Δ
     final dLinAcc = (imu.linAccMag - prev.linAccMag).abs();
@@ -97,14 +118,7 @@ class AccidentRuleEngine {
     final dLax = (imu.lax - prev.lax).abs();
     final dLay = (imu.lay - prev.lay).abs();
     final dLaz = (imu.laz - prev.laz).abs();
-    print("📌 Δcalc lin=${dLinAcc.toStringAsFixed(4)}, "
-      "gyro=${dGyro.toStringAsFixed(4)}, "
-      "lax=${dLax.toStringAsFixed(4)}, lay=${dLay.toStringAsFixed(4)}, laz=${dLaz.toStringAsFixed(4)}, "
-      "tilt=${imu.tiltDeg.toStringAsFixed(2)}");
 
-
-
-    
     // recent hazards
     final recentHazards = hazards.where((h) {
       final dt = (imu.tUs - h.tUs).abs();
@@ -123,27 +137,26 @@ class AccidentRuleEngine {
 
     final hasAnyHazard = recentHazards.isNotEmpty;
 
-    // ----- level 후보 계산 -----
+    // ✅ severe → moderate → minor 순서로 레벨 결정
     AccidentLevel? levelCandidate;
-    if (dLinAcc > a3 || dGyro > g3 || imu.tiltDeg > tiltSevereDeg) {
+    if (dLinAcc > a3 || dGyro > g3 || tilt > tiltSevereDeg) {
       levelCandidate = AccidentLevel.severe;
     } else if (dLinAcc > a2 || dGyro > g2) {
       levelCandidate = AccidentLevel.moderate;
     } else if (dLinAcc > a1 || dGyro > g1) {
       levelCandidate = AccidentLevel.minor;
     } else {
-      // streak 초기화
       _minorStreak = _moderateStreak = _severeStreak = 0;
       return null;
     }
 
-    // ✅ Hazard 없으면 minor/moderate는 누적만 하고 확정 X
+    // // (실험중이면 유지)
     if (!hasAnyHazard && levelCandidate != AccidentLevel.severe) {
       _minorStreak = _moderateStreak = 0;
       return null;
     }
 
-    // ----- streak 누적 -----
+    // ----- streak accumulate -----
     if (levelCandidate == AccidentLevel.minor) {
       _minorStreak++;
       _moderateStreak = _severeStreak = 0;
@@ -160,40 +173,81 @@ class AccidentRuleEngine {
 
     final level = levelCandidate;
 
-    // ----- type 결정 -----
-    AccidentType type;
-    String reason;
+    // ✅ 후보 수집
+    final candidates = <_Cand>[];
 
     if (level == AccidentLevel.severe &&
-        (imu.tiltDeg > tiltSevereDeg || dGyro > g3)) {
-      type = AccidentType.rollover;
-      reason = "전복/대충격(기울기 ${imu.tiltDeg.toStringAsFixed(1)}°, gyroΔ ${dGyro.toStringAsFixed(2)})";
-    } else if (hasVehicle && dLinAcc > a2 && (dLax > dLaz || dLay > dLaz)) {
-      type = AccidentType.collision;
-      reason = "차량 탐지 + 강한 XY 충격";
-    } else if (hasVehicle && dLay > a1 && dLay > dLax) {
-      type = AccidentType.sideswipe;
-      reason = "차량 탐지 + 측면(Y) 충격";
-    } else if (hasPothole && dLaz > a1) {
-      type = AccidentType.potholeImpact;
-      reason = "포트홀 탐지 + Z 충격";
-    } else if ((hasHardObj || hasSoftObj) && dLinAcc > a1) {
-      type = AccidentType.objectImpact;
-      reason = "사물 탐지 + 충격";
-    } else if (level != AccidentLevel.severe) {
-      // ✅ hazard 있는데 약한 충격이면 contact
-      type = AccidentType.contact;
-      reason = "약한 충격 + 위험요소 동반";
-    } else {
-      type = AccidentType.collision;
-      reason = "강충격(severe) 단독 감지";
+        (tilt > tiltSevereDeg || dGyro > g3)) {
+      candidates.add(_Cand(
+        AccidentType.rollover,
+        100,
+        "전복/대충격(기울기 ${tilt.toStringAsFixed(1)}°, gyroΔ ${dGyro.toStringAsFixed(2)})",
+      ));
     }
+
+    if (hasVehicle &&
+        dLinAcc > a2 &&
+        (dLax > dLaz || dLay > dLaz)) {
+      candidates.add(_Cand(
+        AccidentType.collision,
+        80,
+        "차량 탐지 + 강한 XY 충격",
+      ));
+    }
+
+    if (hasVehicle && dLay > a1 && dLay > dLax) {
+      candidates.add(_Cand(
+        AccidentType.sideswipe,
+        70,
+        "차량 탐지 + 측면(Y) 충격",
+      ));
+    }
+
+    if (hasPothole && dLaz > a1) {
+      candidates.add(_Cand(
+        AccidentType.potholeImpact,
+        60,
+        "포트홀 탐지 + Z 충격",
+      ));
+    }
+
+    if ((hasHardObj || hasSoftObj) && dLinAcc > a1) {
+      candidates.add(_Cand(
+        AccidentType.objectImpact,
+        50,
+        "사물 탐지 + 충격",
+      ));
+    }
+
+    if (level != AccidentLevel.severe) {
+      candidates.add(_Cand(
+        AccidentType.contact,
+        40,
+        hasAnyHazard ? "약한 충격 + 위험요소 동반" : "약한 충격(위험요소 없음)",
+      ));
+    }
+
+    if (candidates.isEmpty && level == AccidentLevel.severe) {
+      candidates.add(_Cand(
+        AccidentType.collision,
+        10,
+        "강충격(severe) 단독 감지",
+      ));
+    }
+
+    if (candidates.isEmpty) {
+      _minorStreak = _moderateStreak = _severeStreak = 0;
+      return null;
+    }
+
+    candidates.sort((a, b) => b.priority.compareTo(a.priority));
+    final chosen = candidates.first;
 
     final decision = AccidentDecision(
       tUs: imu.tUs,
-      type: type,
+      type: chosen.type,
       level: level,
-      reason: reason,
+      reason: chosen.reason,
       hazards: recentHazards,
       linAccMag: dLinAcc,
       gyroMag: dGyro,
@@ -204,3 +258,21 @@ class AccidentRuleEngine {
     return decision;
   }
 }
+
+// ✅ decide() 밖, 파일 하단에 private class로 둬야 함.
+class _Cand {
+  final AccidentType type;
+  final int priority;
+  final String reason;
+  const _Cand(this.type, this.priority, this.reason);
+}
+
+// | 사고 타입                     | priority | 의미                               |
+// | -------------------------    | -------- | ---------------------------------- |
+// | rollover (전복사고)           | **100**  | 가장 심각 → 제일 먼저 선택           |
+// | collision (차량 충돌)         | **80**   | 매우 강한 충격                      |
+// | sideswipe (측면 충돌)         | **70**   | 특정 방향 충격                      |
+// | potholeImpact                | **60**   | 바닥 충격                           |
+// | objectImpact                 | **50**   | 사물 충돌                           |
+// | contact                      | **40**   | 약한 충격                           |
+// | fallback severe collision    | **10**   | severe인데 조건 안 맞을 때 최소 처리 |

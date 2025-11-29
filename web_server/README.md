@@ -6,6 +6,15 @@
 
 
 
+전송된 사진에서 차량번호판과 사람 얼굴은 블러처리 됩니다.
+
+# 모델 출처
+
+| 모델 이름 | 출처 |
+| -------| ---|
+| yolov11n-face.pt | [링크1] |
+| license-plate-finetune-v1x.pt | [링크2] |
+
 # 환경 설정
 ``` shell
 # 가상 환경 생성 (선택 사항)
@@ -22,3 +31,8 @@ pip install -r requirements.txt
 ``` shell
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+
+[링크1]: https://huggingface.co/deepghs/yolo-face/blob/b6b06ab1a58eba921209ee6431a79ffedc498eb1/yolov11n-face/model.pt
+
+[링크2]: https://huggingface.co/morsetechlab/yolov11-license-plate-detection/blob/main/license-plate-finetune-v1x.pt

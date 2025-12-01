@@ -22,3 +22,6 @@ Detectron2 또는 영상처리 기반 슬롯 탐지
 
 🔄 Multiple Camera Support
 전방 → 후방 영상 전환, 단계별 시뮬레이션 진행
+
+▶️ Demo Execution
+python parking_guidance.py

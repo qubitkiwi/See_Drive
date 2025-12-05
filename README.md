@@ -19,6 +19,13 @@ Vision AI와 차량 IMU 센서를 융합하여 **도로 사고를 자동으로 �
 * 주차 중 접촉 사고 예방
   을 목표로 설계되었습니다.
 
+
+![Detection_parkingslot](./img/Detection.gif)
+![Back_Parking](./img/Backparking.gif)
+
+
+  
+
 ---
 
 ## **2. 활용 데이터**
@@ -28,7 +35,6 @@ Vision AI와 차량 IMU 센서를 융합하여 **도로 사고를 자동으로 �
 | 실내 자율주차용 데이터    | 주차면·주차선 Segmentation | AI Hub |
 | 교통 사고 영상 데이터    | 충돌·접촉 패턴 학습          | AI Hub |
 | 도로 장애물/표면 인지 영상 | 포트홀·파손·장애물 Detection | AI Hub |
-| 화재 감지 영상        | 연기·불꽃 Segmentation   | AI Hub |
 | 스마트폰 IMU 센서     | 가속도 기반 사고 분석         | 자체 수집  |
 
 ---
@@ -40,7 +46,7 @@ Vision AI와 차량 IMU 센서를 융합하여 **도로 사고를 자동으로 �
 * Vision 기반 위험 요소 탐지
 
   * YOLO: 포트홀·도로 파손·장애물 등 즉시 대응 필요한 요소 탐지
-  * Detectron2: 연기·불꽃 등 비정형 패턴 정밀 분할
+  * Detectron2: 정밀 분할
 
 * IMU 센서 기반 사고 여부 판단
 
@@ -104,7 +110,7 @@ Vision AI가 사고 가능성이 있는 위험 요소를 실시간 분석해
 | 모델         | 탐지 대상         | 출력                | 활용 목적        |
 | ---------- | ------------- | ----------------- | ------------ |
 | YOLO11n    | 포트홀·파손·차량·장애물 | Bounding Box      | 실시간 위험요소 탐지  |
-| Detectron2 | 연기·불꽃·주차선·주차면 | Segmentation Mask | 비정형 패턴 정밀 분할 |
+| Detectron2 | 주차선·주차면 | Segmentation Mask | 비정형 패턴 정밀 분할 |
 
 ---
 
